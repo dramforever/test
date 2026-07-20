@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: (C) 2026 Institute of Software, Chinese Academy of Sciences (ISCAS)
+# SPDX-FileCopyrightText: (C) 2026 openRuyi Project Contributors
+# SPDX-FileContributor: Vivian Wang <wangruikang@iscas.ac.cn>
+#
+# SPDX-License-Identifier: MulanPSL-2.0
+
+name: Tag on push
+
+on:
+  push:
+    branches:
+      - 'ruyi/*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: 'actions'
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ref_prefix="refs/snapshots/$GITHUB_REF-$(date -u '+%Y%m%d')-"
+
+          # Maximum existing number, or 0 if none
+          prev_num="$(( echo 0 && git ls-remote https://github.com/${{ github.repository }}.git "${ref_prefix}*" | sed -e 's/.*-//' ) | sort -rn | head -1)"
+
+          cur_num="$(( prev_num + 1 ))"
+
+          gh api --method POST -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" \
+            /repos/${{ github.repository }}/git/refs \
+            -f "ref=$ref_prefix$cur_num" \
+            -f "sha=$GITHUB_SHA"
